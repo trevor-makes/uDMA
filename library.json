@@ -1,0 +1,21 @@
+{
+  "name": "uDMA",
+  "version": "0.0.0",
+  "description": "uDMA is an API for interfacing an Arduino Micro with SRAM over an 8-bit parallel bus",
+  "keywords": "Arduino, Micro, SRAM, DMA",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/trevor-makes/uDMA.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Trevor Makes",
+      "email": "the.trevor.makes@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "frameworks": "arduino",
+  "platforms": "atmelavr"
+}
