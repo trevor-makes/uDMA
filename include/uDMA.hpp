@@ -10,6 +10,15 @@ namespace uDMA {
 // Perform initial configuration
 void setup();
 
+// Holds the Z80 in reset if true, otherwise resumes
+void force_reset(bool enable);
+
+// Resumes the clock output if true, otherwise pauses
+void enable_clock(bool enable);
+
+// Read the HALT signal from the Z80
+bool is_halted();
+
 // Grant exclusive access to read from the bus
 void enable_dma_read();
 

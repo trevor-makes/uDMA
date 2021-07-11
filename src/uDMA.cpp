@@ -12,22 +12,62 @@
 
 namespace uDMA {
 
+// PORTB [D7 D6 D5 D4 D3 D2 D1 D0]
+const uint8_t DATA_MASK = 0b11111111; // in/out
+
+// PORTD [CS WE - - A3 A2 A1 A0]
+const uint8_t ADDR_0_3_MASK = 0b00001111; // out
+const uint8_t RESET_MASK = bit(4); // out, active low
+const uint8_t WE_MASK = bit(6); // out, active low
+const uint8_t CS_MASK = bit(7); // out, active low
+
+// PORTE
+const uint8_t HALT_MASK = bit(6); // in, active low
+
+// PORTF [A7 A6 A5 A4 - - A9 A8]
+const uint8_t ADDR_4_7_MASK = 0b11110000; // out
+const uint8_t ADDR_8_9_MASK = 0b00000011; // out
+const uint8_t ADDR_4_9_MASK = ADDR_4_7_MASK | ADDR_8_9_MASK;
+
+inline void configure_clock() {
+  DDRC |= bit(6); //< set PC6 (OC3A) as output
+  TCCR3B = bit(CS30) | bit(WGM32); //< no prescaling, CTC
+  OCR3A = 1; // 4 MHz
+}
+
+inline void configure_halt() {
+  // Set halt to active low input with pullup
+  DDRE &= ~HALT_MASK;
+  PORTE |= HALT_MASK;
+}
+
 void setup() {
+  force_reset(true);
+  configure_clock();
+  configure_halt();
   disable_dma();
 }
 
-// PORTB [D7 D6 D5 D4 D3 D2 D1 D0]
-const uint8_t DATA_MASK = 0b11111111;
+inline void force_reset(bool enable) {
+  DDRD |= RESET_MASK;
+  if (enable) {
+    PORTD &= ~RESET_MASK;
+  } else {
+    PORTD |= RESET_MASK;
+  }
+}
 
-// PORTD [CS WE - - A3 A2 A1 A0]
-const uint8_t ADDR_0_3_MASK = 0b00001111;
-const uint8_t WE_MASK = bit(6);
-const uint8_t CS_MASK = bit(7);
+inline void enable_clock(bool enable) {
+  if (enable) {
+    TCCR3A = bit(COM3A0); //< toggle OC3A on compare
+  } else {
+    TCCR3A = bit(COM3A1); //< clear OC3A on compare (hold clock pin low)
+  }
+}
 
-// PORTF [A7 A6 A5 A4 - - A9 A8]
-const uint8_t ADDR_4_7_MASK = 0b11110000;
-const uint8_t ADDR_8_9_MASK = 0b00000011;
-const uint8_t ADDR_4_9_MASK = ADDR_4_7_MASK | ADDR_8_9_MASK;
+inline bool is_halted() {
+  return !(PINE & HALT_MASK);
+}
 
 inline void set_write_enable(bool enable) {
   if (enable) {
@@ -49,7 +89,7 @@ inline void write_address(uint16_t addr) {
   const uint8_t addr_0_3 = addr & 0x0F; //< low 4 bits for port D
   const uint8_t addr_4_7 = addr & 0xF0; //< high 4 bits for port F
   const uint8_t addr_8_9 = addr >> 8; //< 2 bits for port F
-  PORTD = (PORTD & ~ADDR_0_3_MASK) | addr_0_3; //< don't touch WE/CS
+  PORTD = (PORTD & ~ADDR_0_3_MASK) | addr_0_3; //< don't touch WE/CS/RESET
   PORTF = addr_4_7 | addr_8_9; //< [7654--98]
 }
 
@@ -76,23 +116,24 @@ uint8_t read_data() {
 }
 
 void enable_dma_read() {
-  // Set address and WE/CS to output
-  DDRD = ADDR_0_3_MASK | WE_MASK | CS_MASK; //< set addr/WE/CS to output
+  // Set address and RESET/WE/CS to output
+  DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
   DDRF = ADDR_4_9_MASK; //< set addr to output
   PORTB = 0; //< disable data pull-ups
   DDRB = 0; //< set data as input
 }
 
 void enable_dma_write() {
-  // Set address and WE/CS to output
-  DDRD = ADDR_0_3_MASK | WE_MASK | CS_MASK; //< set addr/WE/CS to output
+  // Set address and RESET/WE/CS to output
+  DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
   DDRF = ADDR_4_9_MASK; //< set addr to output
   DDRB = DATA_MASK; //< set data as output
 }
 
 void disable_dma() {
-  PORTD = WE_MASK | CS_MASK; //< enable WE/CS pull-ups, leave addr high-Z
-  DDRD = 0; //< set addr/WE/CS to input
+  // enable WE/CS pull-ups, leave addr high-Z
+  PORTD = (PORTD & ~ADDR_0_3_MASK) | WE_MASK | CS_MASK;
+  DDRD = RESET_MASK; //< set addr/WE/CS to input, RESET to output
   PORTF = 0; //< disable addr pull-ups
   DDRF = 0; //< set addr to input
   PORTB = 0; //< disable data pull-ups
