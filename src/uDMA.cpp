@@ -1,4 +1,4 @@
-// https://github.com/trevor-makes/uANSI.git
+// https://github.com/trevor-makes/uDMA.git
 // Copyright (c) 2021 Trevor Makes
 
 #include "uDMA.hpp"
