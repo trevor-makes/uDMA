@@ -20,10 +20,10 @@ void enable_clock(bool enable);
 bool is_halted();
 
 // Grant exclusive access to read from the bus
-void enable_dma_read();
+void enable_read();
 
 // Grant exclusive access to write to the bus
-void enable_dma_write();
+void enable_write();
 
 // Release exclusive access to the bus
 void disable_dma();

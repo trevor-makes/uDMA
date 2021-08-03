@@ -115,7 +115,7 @@ uint8_t read_data() {
   return data;
 }
 
-void enable_dma_read() {
+void enable_read() {
   // Set address and RESET/WE/CS to output
   DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
   DDRF = ADDR_4_9_MASK; //< set addr to output
@@ -123,7 +123,7 @@ void enable_dma_read() {
   DDRB = 0; //< set data as input
 }
 
-void enable_dma_write() {
+void enable_write() {
   // Set address and RESET/WE/CS to output
   DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
   DDRF = ADDR_4_9_MASK; //< set addr to output
