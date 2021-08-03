@@ -1,4 +1,3 @@
-// https://github.com/trevor-makes/uDMA.git
 // Copyright (c) 2021 Trevor Makes
 
 #pragma once
