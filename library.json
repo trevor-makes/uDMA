@@ -17,5 +17,12 @@
     }
   ],
   "frameworks": "arduino",
-  "platforms": "atmelavr"
+  "platforms": "atmelavr",
+  "dependencies":
+  [
+    {
+      "name": "uIO",
+      "version": "https://github.com/trevor-makes/uIO.git"
+    }
+  ]
 }
