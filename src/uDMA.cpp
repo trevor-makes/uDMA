@@ -1,6 +1,7 @@
 // Copyright (c) 2021 Trevor Makes
 
 #include "uDMA.hpp"
+#include "uIO.hpp"
 
 #include <Arduino.h>
 #include <stdint.h>
@@ -12,21 +13,23 @@
 namespace uDMA {
 
 // PORTB [D7 D6 D5 D4 D3 D2 D1 D0]
-const uint8_t DATA_MASK = 0b11111111; // in/out
+using Data = uIO::PortB;
 
-// PORTD [CS WE - - A3 A2 A1 A0]
-const uint8_t ADDR_0_3_MASK = 0b00001111; // out
+// PORTD [CS WE - R A3 A2 A1 A0]
+using Address0123 = uIO::PortD::Mask<0x0F>;
 const uint8_t RESET_MASK = bit(4); // out, active low
-const uint8_t WE_MASK = bit(6); // out, active low
-const uint8_t CS_MASK = bit(7); // out, active low
+using WriteEnable = uIO::PinD6;
+using ChipSelect = uIO::PinD7;
 
 // PORTE
 const uint8_t HALT_MASK = bit(6); // in, active low
 
 // PORTF [A7 A6 A5 A4 - - A9 A8]
-const uint8_t ADDR_4_7_MASK = 0b11110000; // out
-const uint8_t ADDR_8_9_MASK = 0b00000011; // out
-const uint8_t ADDR_4_9_MASK = ADDR_4_7_MASK | ADDR_8_9_MASK;
+using Address4567 = uIO::PortF::Mask<0xF0>;
+using Address89 = uIO::PortF::Mask<0x03>;
+
+using AddressLSB = uIO::PortSplitter<Address0123, Address4567>;
+using Address = uIO::Port16<AddressLSB, Address89>;
 
 inline void configure_clock() {
   DDRC |= bit(6); //< set PC6 (OC3A) as output
@@ -70,33 +73,29 @@ inline bool is_halted() {
 
 inline void set_write_enable(bool enable) {
   if (enable) {
-    PORTD &= ~WE_MASK; //< set WE low
+    WriteEnable::Write::clear();
   } else {
-    PORTD |= WE_MASK; //< set WE high
+    WriteEnable::Write::set();
   }
 }
 
 inline void set_chip_select(bool enable) {
   if (enable) {
-    PORTD &= ~CS_MASK; //< set CS low
+    ChipSelect::Write::clear();
   } else {
-    PORTD |= CS_MASK; //< set CS high
+    ChipSelect::Write::set();
   }
 }
 
 inline void write_address(uint16_t addr) {
-  const uint8_t addr_0_3 = addr & 0x0F; //< low 4 bits for port D
-  const uint8_t addr_4_7 = addr & 0xF0; //< high 4 bits for port F
-  const uint8_t addr_8_9 = addr >> 8; //< 2 bits for port F
-  PORTD = (PORTD & ~ADDR_0_3_MASK) | addr_0_3; //< don't touch WE/CS/RESET
-  PORTF = addr_4_7 | addr_8_9; //< [7654--98]
+  Address::Write::write(addr);
 }
 
 void write_data(uint8_t data) {
   set_chip_select(true);
   set_write_enable(true);
 
-  PORTB = data;
+  Data::Write::write(data);
 
   set_write_enable(false);
   set_chip_select(false);
@@ -108,35 +107,36 @@ uint8_t read_data() {
   // Must wait 2 cycles (>70 ns) after chip select before reading data
   __asm__("nop");
   __asm__("nop");
-  const uint8_t data = PINB;
+  const uint8_t data = Data::Read::read();
 
   set_chip_select(false);
   return data;
 }
 
 void enable_read() {
-  // Set address and RESET/WE/CS to output
-  DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
-  DDRF = ADDR_4_9_MASK; //< set addr to output
-  PORTB = 0; //< disable data pull-ups
-  DDRB = 0; //< set data as input
+  Address::Write::enable_write();
+  WriteEnable::Write::enable_write();
+  ChipSelect::Write::enable_write();
+  Data::Read::disable_pullups();
+  Data::Read::enable_read();
 }
 
 void enable_write() {
-  // Set address and RESET/WE/CS to output
-  DDRD = ADDR_0_3_MASK | RESET_MASK | WE_MASK | CS_MASK;
-  DDRF = ADDR_4_9_MASK; //< set addr to output
-  DDRB = DATA_MASK; //< set data as output
+  Address::Write::enable_write();
+  WriteEnable::Write::enable_write();
+  ChipSelect::Write::enable_write();
+  Data::Write::enable_write();
 }
 
 void disable_dma() {
-  // enable WE/CS pull-ups, leave addr high-Z
-  PORTD = (PORTD & ~ADDR_0_3_MASK) | WE_MASK | CS_MASK;
-  DDRD = RESET_MASK; //< set addr/WE/CS to input, RESET to output
-  PORTF = 0; //< disable addr pull-ups
-  DDRF = 0; //< set addr to input
-  PORTB = 0; //< disable data pull-ups
-  DDRB = 0; //< set data as input
+  Address::Read::disable_pullups();
+  Address::Read::enable_read();
+  WriteEnable::Read::enable_pullups();
+  WriteEnable::Read::enable_read();
+  ChipSelect::Read::enable_pullups();
+  ChipSelect::Read::enable_read();
+  Data::Read::disable_pullups();
+  Data::Read::enable_read();
 }
 
 void write_byte(uint16_t addr, uint8_t data) {
