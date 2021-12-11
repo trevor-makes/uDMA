@@ -31,6 +31,8 @@ using Address89 = uIO::PortF::Mask<0x03>;
 using AddressLSB = uIO::PortSplitter<Address0123, Address4567>;
 using Address = uIO::Port16<AddressLSB, Address89>;
 
+using TmpBus = Bus<Address, Data, ChipSelect, WriteEnable>;
+
 inline void configure_clock() {
   DDRC |= bit(6); //< set PC6 (OC3A) as output
   TCCR3B = bit(CS30) | bit(WGM32); //< no prescaling, CTC
@@ -71,102 +73,32 @@ inline bool is_halted() {
   return !(PINE & HALT_MASK);
 }
 
-inline void set_write_enable(bool enable) {
-  if (enable) {
-    WriteEnable::Write::clear();
-  } else {
-    WriteEnable::Write::set();
-  }
-}
-
-inline void set_chip_select(bool enable) {
-  if (enable) {
-    ChipSelect::Write::clear();
-  } else {
-    ChipSelect::Write::set();
-  }
-}
-
-inline void write_address(uint16_t addr) {
-  Address::Write::write(addr);
-}
-
-void write_data(uint8_t data) {
-  set_chip_select(true);
-  set_write_enable(true);
-
-  Data::Write::write(data);
-
-  set_write_enable(false);
-  set_chip_select(false);
-}
-
-uint8_t read_data() {
-  set_chip_select(true);
-
-  // Must wait 2 cycles (>70 ns) after chip select before reading data
-  __asm__("nop");
-  __asm__("nop");
-  const uint8_t data = Data::Read::read();
-
-  set_chip_select(false);
-  return data;
-}
-
 void enable_read() {
-  Address::Write::enable_write();
-  WriteEnable::Write::enable_write();
-  ChipSelect::Write::enable_write();
-  Data::Read::disable_pullups();
-  Data::Read::enable_read();
+  TmpBus::enable_read();
 }
 
 void enable_write() {
-  Address::Write::enable_write();
-  WriteEnable::Write::enable_write();
-  ChipSelect::Write::enable_write();
-  Data::Write::enable_write();
+  TmpBus::enable_write();
 }
 
 void disable_dma() {
-  Address::Read::disable_pullups();
-  Address::Read::enable_read();
-  WriteEnable::Read::enable_pullups();
-  WriteEnable::Read::enable_read();
-  ChipSelect::Read::enable_pullups();
-  ChipSelect::Read::enable_read();
-  Data::Read::disable_pullups();
-  Data::Read::enable_read();
+  TmpBus::disable_bus();
 }
 
 void write_byte(uint16_t addr, uint8_t data) {
-  write_address(addr);
-  write_data(data);
+  TmpBus::write_byte(addr, data);
 }
 
 uint8_t read_byte(uint16_t addr) {
-  write_address(addr);
-  return read_data();
+  return TmpBus::read_byte(addr);
 }
 
 void write_string(uint16_t addr, const char* string) {
-  for (;;) {
-    const uint8_t data = *string++;
-    write_address(addr++);
-    write_data(data);
-    if (data == 0)
-      break;
-  }
+  TmpBus::write_string(addr, string);
 }
 
 void read_string(uint16_t addr, char* string, uint8_t max_len) {
-  for (uint8_t i = 0; i < max_len; ++i) {
-    write_address(addr + i);
-    const uint8_t data = read_data();
-    string[i] = data;
-    if (data == 0)
-      break;
-  }
+  TmpBus::read_string(addr, string, max_len);
 }
 
 } // namespace uDMA
