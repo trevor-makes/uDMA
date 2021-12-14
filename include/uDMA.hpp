@@ -10,81 +10,103 @@ namespace uDMA {
 
 template <typename ADDRESS, typename DATA, typename CHIP_SELECT, typename WRITE_ENABLE>
 struct Bus {
-  static void enable_write() {
-    ADDRESS::Write::enable_write();
-    CHIP_SELECT::Write::enable_write();
-    WRITE_ENABLE::Write::enable_write();
-    DATA::Write::enable_write();
+  // Configure ports for writing to memory
+  static void config_write() {
+    ADDRESS::config_output();
+    CHIP_SELECT::config_output();
+    WRITE_ENABLE::config_output();
+    DATA::config_output();
   }
 
-  static void enable_read() {
-    ADDRESS::Write::enable_write();
-    CHIP_SELECT::Write::enable_write();
-    WRITE_ENABLE::Write::enable_write();
-    DATA::Read::disable_pullups();
-    DATA::Read::enable_read();
+  // Configure ports for reading from memory
+  static void config_read() {
+    ADDRESS::config_output();
+    CHIP_SELECT::config_output();
+    WRITE_ENABLE::config_output();
+    DATA::config_input();
   }
 
-  static void disable_bus() {
-    ADDRESS::Read::disable_pullups();
-    ADDRESS::Read::enable_read();
-    CHIP_SELECT::Read::enable_pullups();
-    CHIP_SELECT::Read::enable_read();
-    WRITE_ENABLE::Read::enable_pullups();
-    WRITE_ENABLE::Read::enable_read();
-    DATA::Read::disable_pullups();
-    DATA::Read::enable_read();
+  // Configure ports for high impedance (allow external device to access memory)
+  static void config_high_impedance() {
+    ADDRESS::config_input();
+    CHIP_SELECT::config_input_pullups();
+    WRITE_ENABLE::config_input_pullups();
+    DATA::config_input();
+  }
+
+  static void enable_chip_select() {
+    CHIP_SELECT::clear();
+  }
+
+  static void disable_chip_select() {
+    CHIP_SELECT::set();
+  }
+
+  static void enable_write_enable() {
+    WRITE_ENABLE::clear();
+  }
+
+  static void disable_write_enable() {
+    WRITE_ENABLE::set();
   }
 
   static void write_data(uint8_t data) {
-    // Enable (clear) CS and WE
-    CHIP_SELECT::Write::clear();
-    WRITE_ENABLE::Write::clear();
+    enable_chip_select();
+    enable_write_enable();
 
-    DATA::Write::write(data);
+    DATA::write(data);
 
-    // Disable (set) CS and WE
-    WRITE_ENABLE::Write::set();
-    CHIP_SELECT::Write::set();
+    disable_write_enable();
+    disable_chip_select();
   }
 
   static uint8_t read_data() {
-    // Enable (clear) CS
-    CHIP_SELECT::Write::clear();
+    enable_chip_select();
 
     // Must wait 2 cycles (>70 ns) after chip select before reading data
     __asm__("nop");
     __asm__("nop");
-    const uint8_t data = DATA::Read::read();
+    const uint8_t data = DATA::read();
 
-    // Disable (set) CS
-    CHIP_SELECT::Write::set();
+    disable_chip_select();
     return data;
   }
 
   static void write_byte(uint16_t addr, uint8_t data) {
-    ADDRESS::Write::write(addr);
+    ADDRESS::write(addr);
     write_data(data);
   }
 
   static uint8_t read_byte(uint16_t addr) {
-    ADDRESS::Write::write(addr);
+    ADDRESS::write(addr);
     return read_data();
   }
 
+  // TODO test address MSB optimization
   static void write_string(uint16_t addr, const char* string) {
+    //if ((addr & 0xFF) != 0)
+    //  ADDRESS::MSB::write(addr / 0x100);
     for (;;) {
+      ADDRESS::write(addr++);
+      //if ((addr & 0xFF) == 0)
+      //  ADDRESS::MSB::write(addr / 0x100);
+      //ADDRESS::LSB::write(addr++)
       const uint8_t data = *string++;
-      ADDRESS::Write::write(addr++);
       write_data(data);
       if (data == 0)
         break;
     }
   }
 
+  // TODO test address MSB optimization
   static void read_string(uint16_t addr, char* string, uint8_t max_len) {
+    //if ((addr & 0xFF) != 0)
+    //  ADDRESS::MSB::write(addr / 0x100);
     for (uint8_t i = 0; i < max_len; ++i) {
-      ADDRESS::Write::write(addr + i);
+      ADDRESS::write(addr + i);
+      //if ((addr + i & 0xFF) == 0)
+      //  ADDRESS::MSB::write((addr + i) / 0x100);
+      //ADDRESS::LSB::write(addr + i);
       const uint8_t data = read_data();
       string[i] = data;
       if (data == 0)

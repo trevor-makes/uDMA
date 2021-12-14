@@ -15,34 +15,34 @@ namespace uDMA {
 // PORTB [D7 D6 D5 D4 D3 D2 D1 D0]
 using Data = uIO::PortB;
 
+// PORTC [* C - - - - - -]
+using Clock = uIO::PinC6;
+
 // PORTD [CS WE - R A3 A2 A1 A0]
-using Address0123 = uIO::PortD::Mask<0x0F>;
-const uint8_t RESET_MASK = bit(4); // out, active low
+using Address0123 = uIO::PortD::Mask<0b00001111>;
+using Reset = uIO::PinD4;
 using WriteEnable = uIO::PinD6;
 using ChipSelect = uIO::PinD7;
 
-// PORTE
-const uint8_t HALT_MASK = bit(6); // in, active low
+// PORTE [- H - - - * - -]
+using Halt = uIO::PinE6;
 
 // PORTF [A7 A6 A5 A4 - - A9 A8]
-using Address4567 = uIO::PortF::Mask<0xF0>;
-using Address89 = uIO::PortF::Mask<0x03>;
+using Address4567 = uIO::PortF::Mask<0b11110000>;
+using Address89 = uIO::PortF::Mask<0b00000011>;
 
-using AddressLSB = uIO::PortSplitter<Address0123, Address4567>;
-using Address = uIO::Port16<AddressLSB, Address89>;
-
+using Address = uIO::Port16<uIO::PortJoin<Address0123, Address4567>, Address89>;
 using TmpBus = Bus<Address, Data, ChipSelect, WriteEnable>;
 
 inline void configure_clock() {
-  DDRC |= bit(6); //< set PC6 (OC3A) as output
+  Clock::config_output(); // DDRC |= bit(6); //< set PC6 (OC3A) as output
   TCCR3B = bit(CS30) | bit(WGM32); //< no prescaling, CTC
   OCR3A = 1; // 4 MHz
 }
 
 inline void configure_halt() {
   // Set halt to active low input with pullup
-  DDRE &= ~HALT_MASK;
-  PORTE |= HALT_MASK;
+  Halt::config_input_pullups(); // DDRE &= ~HALT_MASK; PORTE |= HALT_MASK;
 }
 
 void setup() {
@@ -53,11 +53,11 @@ void setup() {
 }
 
 inline void force_reset(bool enable) {
-  DDRD |= RESET_MASK;
+  Reset::config_output(); // DDRD |= RESET_MASK;
   if (enable) {
-    PORTD &= ~RESET_MASK;
+    Reset::clear(); // PORTD &= ~RESET_MASK;
   } else {
-    PORTD |= RESET_MASK;
+    Reset::set(); // PORTD |= RESET_MASK;
   }
 }
 
@@ -70,19 +70,19 @@ inline void enable_clock(bool enable) {
 }
 
 inline bool is_halted() {
-  return !(PINE & HALT_MASK);
+  return Halt::is_clear(); // !(PINE & HALT_MASK);
 }
 
 void enable_read() {
-  TmpBus::enable_read();
+  TmpBus::config_read();
 }
 
 void enable_write() {
-  TmpBus::enable_write();
+  TmpBus::config_write();
 }
 
 void disable_dma() {
-  TmpBus::disable_bus();
+  TmpBus::config_high_impedance();
 }
 
 void write_byte(uint16_t addr, uint8_t data) {
