@@ -82,15 +82,9 @@ struct Bus {
     return read_data();
   }
 
-  // TODO test address MSB optimization
   static void write_string(uint16_t addr, const char* string) {
-    //if ((addr & 0xFF) != 0)
-    //  ADDRESS::MSB::write(addr / 0x100);
     for (;;) {
       ADDRESS::write(addr++);
-      //if ((addr & 0xFF) == 0)
-      //  ADDRESS::MSB::write(addr / 0x100);
-      //ADDRESS::LSB::write(addr++)
       const uint8_t data = *string++;
       write_data(data);
       if (data == 0)
@@ -98,15 +92,9 @@ struct Bus {
     }
   }
 
-  // TODO test address MSB optimization
   static void read_string(uint16_t addr, char* string, uint8_t max_len) {
-    //if ((addr & 0xFF) != 0)
-    //  ADDRESS::MSB::write(addr / 0x100);
     for (uint8_t i = 0; i < max_len; ++i) {
       ADDRESS::write(addr + i);
-      //if ((addr + i & 0xFF) == 0)
-      //  ADDRESS::MSB::write((addr + i) / 0x100);
-      //ADDRESS::LSB::write(addr + i);
       const uint8_t data = read_data();
       string[i] = data;
       if (data == 0)
