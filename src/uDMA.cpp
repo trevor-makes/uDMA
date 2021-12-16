@@ -49,10 +49,9 @@ void setup() {
   force_reset(true);
   configure_clock();
   configure_halt();
-  disable_dma();
 }
 
-inline void force_reset(bool enable) {
+void force_reset(bool enable) {
   Reset::config_output(); // DDRD |= RESET_MASK;
   if (enable) {
     Reset::clear(); // PORTD &= ~RESET_MASK;
@@ -61,7 +60,7 @@ inline void force_reset(bool enable) {
   }
 }
 
-inline void enable_clock(bool enable) {
+void enable_clock(bool enable) {
   if (enable) {
     TCCR3A = bit(COM3A0); //< toggle OC3A on compare
   } else {
@@ -69,36 +68,8 @@ inline void enable_clock(bool enable) {
   }
 }
 
-inline bool is_halted() {
+bool is_halted() {
   return Halt::is_clear(); // !(PINE & HALT_MASK);
-}
-
-void enable_read() {
-  TmpBus::config_read();
-}
-
-void enable_write() {
-  TmpBus::config_write();
-}
-
-void disable_dma() {
-  TmpBus::config_high_impedance();
-}
-
-void write_byte(uint16_t addr, uint8_t data) {
-  TmpBus::write_byte(addr, data);
-}
-
-uint8_t read_byte(uint16_t addr) {
-  return TmpBus::read_byte(addr);
-}
-
-void write_string(uint16_t addr, const char* string) {
-  TmpBus::write_string(addr, string);
-}
-
-void read_string(uint16_t addr, char* string, uint8_t max_len) {
-  TmpBus::read_string(addr, string, max_len);
 }
 
 } // namespace uDMA
