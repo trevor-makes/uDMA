@@ -11,42 +11,42 @@ namespace uDMA {
 template <typename CHIP_SELECT, typename WRITE_ENABLE>
 struct Control {
   // Configure control lines for writing to memory
-  static void config_write() {
+  static inline void config_write() {
     CHIP_SELECT::config_output();
     WRITE_ENABLE::config_output();
   }
 
   // Configure control lines for reading from memory
-  static void config_read() {
+  static inline void config_read() {
     CHIP_SELECT::config_output();
     WRITE_ENABLE::config_output();
   }
 
   // Configure control lines for external control
-  static void config_external() {
+  static inline void config_external() {
     CHIP_SELECT::config_input_pullups();
     WRITE_ENABLE::config_input_pullups();
   }
 
   // Set control lines for start of write sequence
-  static void begin_write() {
+  static inline void begin_write() {
     CHIP_SELECT::clear();
     WRITE_ENABLE::clear();
   }
 
   // Set control lines for end of write sequence
-  static void end_write() {
+  static inline void end_write() {
     CHIP_SELECT::set();
     WRITE_ENABLE::set();
   }
 
   // Set control lines for start of read sequence
-  static void begin_read() {
+  static inline void begin_read() {
     CHIP_SELECT::clear();
   }
 
   // Set control lines for end of read sequence
-  static void end_read() {
+  static inline void end_read() {
     CHIP_SELECT::set();
   }
 };
@@ -54,21 +54,21 @@ struct Control {
 template <typename ADDRESS, typename DATA, typename CONTROL>
 struct Bus {
   // Configure ports for writing to memory
-  static void config_write() {
+  static inline void config_write() {
     ADDRESS::config_output();
     DATA::config_output();
     CONTROL::config_write();
   }
 
   // Configure ports for reading from memory
-  static void config_read() {
+  static inline void config_read() {
     ADDRESS::config_output();
     DATA::config_input();
     CONTROL::config_read();
   }
 
   // Configure ports for external control
-  static void config_external() {
+  static inline void config_external() {
     ADDRESS::config_input();
     DATA::config_input();
     CONTROL::config_external();
