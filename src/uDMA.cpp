@@ -31,9 +31,20 @@ using Halt = uIO::PinE6;
 using Address4567 = uIO::PortF::Mask<0b11110000>;
 using Address89 = uIO::PortF::Mask<0b00000011>;
 
+// 2114 SRAM requires 70 ns after chip select before reading data
+template <typename DATA>
+struct DelayRead : DATA {
+  static uint8_t read() {
+    // 2 NOP cycles at 16 MHz delays 125 ns
+    __asm__("nop");
+    __asm__("nop");
+    return DATA::read();
+  }
+};
+
 using TmpControl = Control<ChipSelect, WriteEnable>;
 using Address = uIO::Port16<uIO::PortJoin<Address0123, Address4567>, Address89>;
-using TmpBus = Bus<Address, Data, TmpControl>;
+using TmpBus = Bus<Address, DelayRead<Data>, TmpControl>;
 
 inline void configure_clock() {
   Clock::config_output(); // DDRC |= bit(6); //< set PC6 (OC3A) as output

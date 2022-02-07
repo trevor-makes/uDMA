@@ -84,12 +84,7 @@ struct Bus {
   static uint8_t read_byte(uint16_t addr) {
     ADDRESS::write(addr);
     CONTROL::begin_read();
-
-    // Must wait 2 cycles (>70 ns) after chip select before reading data
-    __asm__("nop");
-    __asm__("nop");
     const uint8_t data = DATA::read();
-
     CONTROL::end_read();
     return data;
   }
