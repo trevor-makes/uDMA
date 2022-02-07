@@ -8,67 +8,87 @@
 
 namespace uDMA {
 
-template <typename ADDRESS, typename DATA, typename CHIP_SELECT, typename WRITE_ENABLE>
+template <typename CHIP_SELECT, typename WRITE_ENABLE>
+struct Control {
+  // Configure control lines for writing to memory
+  static void config_write() {
+    CHIP_SELECT::config_output();
+    WRITE_ENABLE::config_output();
+  }
+
+  // Configure control lines for reading from memory
+  static void config_read() {
+    CHIP_SELECT::config_output();
+    WRITE_ENABLE::config_output();
+  }
+
+  // Configure control lines for external control
+  static void config_external() {
+    CHIP_SELECT::config_input_pullups();
+    WRITE_ENABLE::config_input_pullups();
+  }
+
+  // Set control lines for start of write sequence
+  static void begin_write() {
+    CHIP_SELECT::clear();
+    WRITE_ENABLE::clear();
+  }
+
+  // Set control lines for end of write sequence
+  static void end_write() {
+    CHIP_SELECT::set();
+    WRITE_ENABLE::set();
+  }
+
+  // Set control lines for start of read sequence
+  static void begin_read() {
+    CHIP_SELECT::clear();
+  }
+
+  // Set control lines for end of read sequence
+  static void end_read() {
+    CHIP_SELECT::set();
+  }
+};
+
+template <typename ADDRESS, typename DATA, typename CONTROL>
 struct Bus {
   // Configure ports for writing to memory
   static void config_write() {
     ADDRESS::config_output();
-    CHIP_SELECT::config_output();
-    WRITE_ENABLE::config_output();
     DATA::config_output();
+    CONTROL::config_write();
   }
 
   // Configure ports for reading from memory
   static void config_read() {
     ADDRESS::config_output();
-    CHIP_SELECT::config_output();
-    WRITE_ENABLE::config_output();
     DATA::config_input();
+    CONTROL::config_read();
   }
 
-  // Configure ports for high impedance (allow external device to access memory)
-  static void config_high_impedance() {
+  // Configure ports for external control
+  static void config_external() {
     ADDRESS::config_input();
-    CHIP_SELECT::config_input_pullups();
-    WRITE_ENABLE::config_input_pullups();
     DATA::config_input();
-  }
-
-  static void enable_chip_select() {
-    CHIP_SELECT::clear();
-  }
-
-  static void disable_chip_select() {
-    CHIP_SELECT::set();
-  }
-
-  static void enable_write_enable() {
-    WRITE_ENABLE::clear();
-  }
-
-  static void disable_write_enable() {
-    WRITE_ENABLE::set();
+    CONTROL::config_external();
   }
 
   static void write_data(uint8_t data) {
-    enable_chip_select();
-    enable_write_enable();
-
+    CONTROL::begin_write();
     DATA::write(data);
-
-    disable_write_enable();
-    disable_chip_select();
+    CONTROL::end_write();
   }
 
   static uint8_t read_data() {
-    enable_chip_select();
+    CONTROL::begin_read();
 
     // Must wait 2 cycles (>70 ns) after chip select before reading data
     __asm__("nop");
     __asm__("nop");
     const uint8_t data = DATA::read();
 
-    disable_chip_select();
+    CONTROL::end_read();
     return data;
   }
 

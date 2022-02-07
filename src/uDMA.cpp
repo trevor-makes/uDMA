@@ -31,8 +31,9 @@ using Halt = uIO::PinE6;
 using Address4567 = uIO::PortF::Mask<0b11110000>;
 using Address89 = uIO::PortF::Mask<0b00000011>;
 
+using TmpControl = Control<ChipSelect, WriteEnable>;
 using Address = uIO::Port16<uIO::PortJoin<Address0123, Address4567>, Address89>;
-using TmpBus = Bus<Address, Data, ChipSelect, WriteEnable>;
+using TmpBus = Bus<Address, Data, TmpControl>;
 
 inline void configure_clock() {
   Clock::config_output(); // DDRC |= bit(6); //< set PC6 (OC3A) as output
