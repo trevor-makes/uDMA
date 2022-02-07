@@ -74,13 +74,15 @@ struct Bus {
     CONTROL::config_external();
   }
 
-  static void write_data(uint8_t data) {
+  static void write_byte(uint16_t addr, uint8_t data) {
+    ADDRESS::write(addr);
     CONTROL::begin_write();
     DATA::write(data);
     CONTROL::end_write();
   }
 
-  static uint8_t read_data() {
+  static uint8_t read_byte(uint16_t addr) {
+    ADDRESS::write(addr);
     CONTROL::begin_read();
 
     // Must wait 2 cycles (>70 ns) after chip select before reading data
@@ -92,21 +94,10 @@ struct Bus {
     return data;
   }
 
-  static void write_byte(uint16_t addr, uint8_t data) {
-    ADDRESS::write(addr);
-    write_data(data);
-  }
-
-  static uint8_t read_byte(uint16_t addr) {
-    ADDRESS::write(addr);
-    return read_data();
-  }
-
   static void write_string(uint16_t addr, const char* string) {
     for (;;) {
-      ADDRESS::write(addr++);
       const uint8_t data = *string++;
-      write_data(data);
+      write_byte(addr++, data);
       if (data == 0)
         break;
     }
@@ -114,8 +105,7 @@ struct Bus {
 
   static void read_string(uint16_t addr, char* string, uint8_t max_len) {
     for (uint8_t i = 0; i < max_len; ++i) {
-      ADDRESS::write(addr + i);
-      const uint8_t data = read_data();
+      const uint8_t data = read_byte(addr + i);
       string[i] = data;
       if (data == 0)
         break;
