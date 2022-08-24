@@ -53,6 +53,9 @@ struct Control {
 
 template <typename ADDRESS, typename DATA, typename CONTROL>
 struct Bus {
+  using ADDRESS_TYPE = typename ADDRESS::TYPE;
+  using DATA_TYPE = typename DATA::TYPE;
+
   // Configure ports for writing to memory
   static inline void config_write() {
     ADDRESS::config_output();
@@ -74,22 +77,24 @@ struct Bus {
     CONTROL::config_external();
   }
 
-  static void write_byte(uint16_t addr, uint8_t data) {
+  // TODO rename *_byte to *_data or just read/write
+  static void write_byte(ADDRESS_TYPE addr, DATA_TYPE data) {
     ADDRESS::write(addr);
     CONTROL::begin_write();
     DATA::write(data);
     CONTROL::end_write();
   }
 
-  static uint8_t read_byte(uint16_t addr) {
+  static DATA_TYPE read_byte(ADDRESS_TYPE addr) {
     ADDRESS::write(addr);
     CONTROL::begin_read();
-    const uint8_t data = DATA::read();
+    const DATA_TYPE data = DATA::read();
     CONTROL::end_read();
     return data;
   }
 
-  static void write_string(uint16_t addr, const char* string) {
+  // TODO remove the string methods?
+  static void write_string(ADDRESS_TYPE addr, const char* string) {
     for (;;) {
       const uint8_t data = *string++;
       write_byte(addr++, data);
@@ -98,7 +103,7 @@ struct Bus {
     }
   }
 
-  static void read_string(uint16_t addr, char* string, uint8_t max_len) {
+  static void read_string(ADDRESS_TYPE addr, char* string, uint8_t max_len) {
     for (uint8_t i = 0; i < max_len; ++i) {
       const uint8_t data = read_byte(addr + i);
       string[i] = data;
@@ -109,8 +114,8 @@ struct Bus {
 
   // Read bytes to buffer until null terminator or end of buffer
   template <uint8_t L>
-  static void read_string(uint16_t addr, char (&buffer)[L]) {
-      read_string(addr, buffer, L);
+  static void read_string(ADDRESS_TYPE addr, char (&buffer)[L]) {
+    read_string(addr, buffer, L);
   }
 };
 
