@@ -8,23 +8,26 @@
 
 namespace uDMA {
 
-template <typename CHIP_SELECT, typename WRITE_ENABLE>
+// Typical SRAM interface with active-low control lines
+template <typename CHIP_SELECT, typename OUTPUT_ENABLE, typename WRITE_ENABLE>
 struct Control {
-  // Configure control lines for writing to memory
-  static inline void config_write() {
+  // Configure ports to drive control lines
+  static inline void config_active() {
+    CHIP_SELECT::set();
+    OUTPUT_ENABLE::set();
+    WRITE_ENABLE::set();
     CHIP_SELECT::config_output();
+    OUTPUT_ENABLE::config_output();
     WRITE_ENABLE::config_output();
   }
 
-  // Configure control lines for reading from memory
-  static inline void config_read() {
-    CHIP_SELECT::config_output();
-    WRITE_ENABLE::config_output();
-  }
-
-  // Configure control lines for external control
-  static inline void config_external() {
+  // Configure ports to float for external control
+  static inline void config_float() {
+    CHIP_SELECT::set();
+    OUTPUT_ENABLE::set();
+    WRITE_ENABLE::set();
     CHIP_SELECT::config_input_pullups();
+    OUTPUT_ENABLE::config_input_pullups();
     WRITE_ENABLE::config_input_pullups();
   }
 
@@ -36,17 +39,19 @@ struct Control {
 
   // Set control lines for end of write sequence
   static inline void end_write() {
-    CHIP_SELECT::set();
     WRITE_ENABLE::set();
+    CHIP_SELECT::set();
   }
 
   // Set control lines for start of read sequence
   static inline void begin_read() {
     CHIP_SELECT::clear();
+    OUTPUT_ENABLE::clear();
   }
 
   // Set control lines for end of read sequence
   static inline void end_read() {
+    OUTPUT_ENABLE::set();
     CHIP_SELECT::set();
   }
 };
@@ -60,21 +65,21 @@ struct Bus {
   static inline void config_write() {
     ADDRESS::config_output();
     DATA::config_output();
-    CONTROL::config_write();
+    CONTROL::config_active();
   }
 
   // Configure ports for reading from memory
   static inline void config_read() {
     ADDRESS::config_output();
     DATA::config_input();
-    CONTROL::config_read();
+    CONTROL::config_active();
   }
 
-  // Configure ports for external control
-  static inline void config_external() {
+  // Configure ports to float for external control
+  static inline void config_float() {
     ADDRESS::config_input();
     DATA::config_input();
-    CONTROL::config_external();
+    CONTROL::config_float();
   }
 
   // TODO rename *_byte to *_data or just read/write
