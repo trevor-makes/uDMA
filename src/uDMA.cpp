@@ -13,13 +13,13 @@
 namespace uDMA {
 
 // PORTC [* C - - - - - -]
-using Clock = uIO::PinC6;
+using Clock = uIO::PortC::Bit<6>;
 
 // PORTD [CS WE - R A3 A2 A1 A0]
-using Reset = uIO::PinD4;
+using Reset = uIO::PortD::Bit<4>;
 
 // PORTE [- H - - - * - -]
-using Halt = uIO::PinE6;
+using Halt = uIO::PortE::Bit<6>;
 
 inline void configure_clock() {
   Clock::config_output(); // DDRC |= bit(6); //< set PC6 (OC3A) as output
