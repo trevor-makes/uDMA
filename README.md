@@ -1,5 +1,7 @@
 # uDMA
 
+**Deprecated! Merged into [core](https://github.com/trevor-makes/core)**
+
 uDMA is an API for interfacing an Arduino Micro with SRAM over an 8-bit parallel bus. This is intended for an 8-bit homebrew computer where the Arduino is paired with an 8-bit CPU such as a Zilog Z80. In this configuration, the Arduino can be used to load code into SRAM, which can subsequently be run on the CPU.
 
 Presently, the pin configuration is hard-coded (for Arduino Micro) and the address bus is limited to 10-bits, but this may be made generic in the future.
